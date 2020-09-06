@@ -1,0 +1,42 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal
+    - name: Set Set git branch env variables for Docker Tag
+      id: get_branch
+      run: echo ::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/})
+    - name: Set Set git commit env variables for Docker Tag
+      id: get_commit
+      run: echo ::set-env name=COMMIT::$(echo ${GITHUB_SHA::8})
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v1.1.0
+      with:
+        # Username used to log in to a Docker registry. If not set then no login will occur
+        username: ${{ secrets.DOCKER_USER_ID }}
+        # Password or personal access token used to log in to a Docker registry. If not set then no login will occur
+        password: ${{ secrets.DOCKER_PASSWORD }}
+        # Docker repository to tag the image with
+        repository: vikalf/va.blazorapp
+        # Comma-delimited list of tags. These will be added to the registry/repository to form the image's tags
+        tags: "latest,${{ env.BRANCH_NAME }}-${{ env.COMMIT }}"
